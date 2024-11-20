@@ -1,67 +1,78 @@
-<div>Teachable Machine Coin Calculator</div>
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
-<div id="total-container">Total Value: $<span id="total-value">0.00</span></div>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-<script type="text/javascript">
-    const URL = "./model/";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Coin Calculator</title>
+</head>
+<body>
+    <div>Teachable Machine Image Model</div>
+    <button type="button" onclick="init()">Start</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
 
-    let model, webcam, labelContainer, totalValue = 0;
+    <!-- Include TensorFlow.js and Teachable Machine libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-    // Coin value mapping
-    const coinValues = {
-        "1 Cent": 0.01,
-        "5 Cents": 0.05,
-        "10 Cents": 0.10,
-        "25 Cents": 0.25
-    };
+    <script>
+        // Path to the model files (in the root directory, no folder needed)
+        const URL = "./";
 
-    async function init() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+        let model, webcam, labelContainer, maxPredictions;
 
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
+        // Load the image model and set up the webcam
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
 
-        const flip = true;
-        webcam = new tmImage.Webcam(200, 200, flip);
-        await webcam.setup();
-        await webcam.play();
-        window.requestAnimationFrame(loop);
+            try {
+                // Load the model and its metadata
+                console.log("Loading model...");
+                model = await tmImage.load(modelURL, metadataURL);
+                console.log("Model loaded successfully!");
 
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) {
-            labelContainer.appendChild(document.createElement("div"));
-        }
-    }
+                maxPredictions = model.getTotalClasses();
 
-    async function loop() {
-        webcam.update();
-        await predict();
-        window.requestAnimationFrame(loop);
-    }
+                // Set up the webcam
+                const flip = true; // Flip the webcam for mirror effect
+                webcam = new tmImage.Webcam(200, 200, flip);
+                await webcam.setup(); // Request webcam access
+                await webcam.play();
+                window.requestAnimationFrame(loop);
 
-    async function predict() {
-        const prediction = await model.predict(webcam.canvas);
-        let currentTotal = 0;
+                // Add webcam feed to the webpage
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
 
-        for (let i = 0; i < maxPredictions; i++) {
-            const className = prediction[i].className;
-            const probability = prediction[i].probability.toFixed(2);
-
-            labelContainer.childNodes[i].innerHTML = `${className}: ${probability}`;
-
-            // Add to total if confidence is high
-            if (probability > 0.8 && coinValues[className]) {
-                currentTotal += coinValues[className];
+                // Set up the label container for displaying predictions
+                labelContainer = document.getElementById("label-container");
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+            } catch (error) {
+                console.error("Error initializing the model:", error);
+                alert("Could not load the model. Check the console for details.");
             }
         }
 
-        // Update the total value
-        totalValue = currentTotal;
-        document.getElementById("total-value").innerText = totalValue.toFixed(2);
-    }
-</script>
+        // Loop to update the webcam feed and get predictions
+        async function loop() {
+            webcam.update(); // Update the webcam frame
+            await predict(); // Make predictions
+            window.requestAnimationFrame(loop);
+        }
+
+        // Run predictions on the webcam feed
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+
+            // Update the label container with predictions
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+    </script>
+</body>
+</html>
